@@ -107,5 +107,5 @@ struct proc {
   char name[16];               // Process name (debugging)
 
   // trace mask
-  uint64 trace_mask;
+  int trace_mask;
 };
