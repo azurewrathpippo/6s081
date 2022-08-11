@@ -671,9 +671,8 @@ availableprocess(void)
     acquire(&p->lock);
     if(p->state == UNUSED) {
       process_cnt++;
-    } else {
-      release(&p->lock);
     }
+    release(&p->lock);
   }
   return process_cnt;
 }
