@@ -669,7 +669,7 @@ availableprocess(void)
 
   for(p = proc; p < &proc[NPROC]; p++) {
     acquire(&p->lock);
-    if(p->state == UNUSED) {
+    if(p->state != UNUSED) {
       process_cnt++;
     }
     release(&p->lock);
