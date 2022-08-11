@@ -660,3 +660,20 @@ procdump(void)
     printf("\n");
   }
 }
+
+uint64
+availableprocess(void)
+{
+  uint64 process_cnt = 0;
+  struct proc *p;
+
+  for(p = proc; p < &proc[NPROC]; p++) {
+    acquire(&p->lock);
+    if(p->state == UNUSED) {
+      process_cnt++;
+    } else {
+      release(&p->lock);
+    }
+  }
+  return process_cnt;
+}
