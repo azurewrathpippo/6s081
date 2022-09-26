@@ -133,6 +133,7 @@ found:
     release(&p->lock);
     return 0;
   }
+  p->syscallspace->pid = p->pid;
 
   // An empty user page table.
   p->pagetable = proc_pagetable(p);
