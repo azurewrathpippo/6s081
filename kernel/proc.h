@@ -80,6 +80,11 @@ struct trapframe {
   /* 280 */ uint64 t6;
 };
 
+// used to store variable for syscall to speed up syscall
+struct syscallspace {
+  int pid;  // Process ID
+};
+
 enum procstate { UNUSED, USED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
 // Per-process state
@@ -105,4 +110,5 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+  struct syscallspace syscallspace; // used to store variable for syscall to speed up syscall(mainly for pid now)
 };
