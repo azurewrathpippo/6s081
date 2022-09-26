@@ -209,7 +209,7 @@ proc_pagetable(struct proc *p)
 
   // map the syscallspace for syscall(mainly for pid info now)
   if(mappages(pagetable, USYSCALL, PGSIZE,
-              (uint64)(p->syscallspace), PTE_R) < 0){
+              (uint64)(p->syscallspace), PTE_R | PTE_U) < 0){
     uvmunmap(pagetable, TRAMPOLINE, 1, 0);
     uvmunmap(pagetable, TRAPFRAME, 1, 0);
     uvmfree(pagetable, 0);
