@@ -127,6 +127,13 @@ found:
     return 0;
   }
 
+  // Allocate a syscallspace.
+  if ((p->syscallspace = (struct syscallspace *)kalloc()) == 0) {
+    freeproc(p);
+    release(&p->lock);
+    return 0;
+  }
+
   // An empty user page table.
   p->pagetable = proc_pagetable(p);
   if(p->pagetable == 0){
@@ -164,6 +171,9 @@ freeproc(struct proc *p)
   p->killed = 0;
   p->xstate = 0;
   p->state = UNUSED;
+  if(p->syscallspace)
+    kfree((void*)p->syscallspace);
+  p->syscallspace = 0;
 }
 
 // Create a user page table for a given process,
