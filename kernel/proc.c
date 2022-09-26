@@ -206,6 +206,15 @@ proc_pagetable(struct proc *p)
     return 0;
   }
 
+  // map the syscallspace for syscall(mainly for pid info now)
+  if(mappages(pagetable, USYSCALL, PGSIZE,
+              (uint64)(p->syscallspace), PTE_R) < 0){
+    uvmunmap(pagetable, TRAMPOLINE, 1, 0);
+    uvmunmap(pagetable, TRAPFRAME, 1, 0);
+    uvmfree(pagetable, 0);
+    return 0;
+  }
+
   return pagetable;
 }
 
