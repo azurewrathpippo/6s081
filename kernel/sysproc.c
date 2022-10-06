@@ -7,6 +7,9 @@
 #include "spinlock.h"
 #include "proc.h"
 
+pte_t *
+walk(pagetable_t pagetable, uint64 va, int alloc);
+
 uint64
 sys_exit(void)
 {
@@ -84,14 +87,37 @@ sys_pgaccess(void)
   uint64 base;
   if(argaddr(0, &base) < 0)
     return -1;
+  // round down the base to align to PAGESIZE
+  base = PGROUNDDOWN(base);
 
   int len;
   if(argint(1, &len) < 0)
     return -1;
-
-  uint64 mask;
-  if(argaddr(0, &mask) < 0)
+  // the number of page should not be larger than 64 or less equal than 0
+  if (len > 64 || len <= 0) {
     return -1;
+  }
+  int bytelen = len / 8;
+
+  uint64 maskaddr;
+  if(argaddr(2, &maskaddr) < 0)
+    return -1;
+
+  // the pagetable of the current process
+  pagetable_t pagetable = myproc()->pagetable;
+
+  uint64 mask = 0;
+
+  for (int i = 0; i < len; i++) {
+    pte_t *pte = walk(pagetable, base + i * PGSIZE, 0);
+    if(*pte & PTE_A) { // the ith page is accessed
+      mask |= (1 << i);
+      *pte &= ~(PTE_A); // clear the access bit of pte
+    }
+  }
+
+  // copy mask to user space
+  copyout(pagetable, maskaddr, (char *)&mask, bytelen);
 
   return 0;
 }
