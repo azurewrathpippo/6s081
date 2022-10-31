@@ -1,6 +1,7 @@
 #include "kernel/types.h"
 #include "kernel/stat.h"
 #include "user/user.h"
+#include "kernel/riscv.h"
 
 #include <stdarg.h>
 
@@ -115,5 +116,12 @@ printf(const char *fmt, ...)
 void
 backtrace()
 {
-  
+  uint64 fp = r_fp(); // current stack frame pointer.
+  uint64 return_address = *(uint64 *)(fp - 8); // current return address.
+  printf("backtrace:\n");
+  do
+  {
+    printf("%x\n", return_address);
+    fp = *(uint64 *)(fp - 16);
+  } while (fp != PGROUNDDOWN(fp));
 }
