@@ -141,7 +141,8 @@ backtrace()
   printf("backtrace:\n");
   do
   {
-    printf("%x\n", return_address);
+    printf("%p\n", return_address);
     fp = *(uint64 *)(fp - 16);
+    return_address = *(uint64 *)(fp - 8);
   } while (fp != PGROUNDDOWN(fp));
 }
