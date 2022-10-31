@@ -112,16 +112,3 @@ printf(const char *fmt, ...)
   va_start(ap, fmt);
   vprintf(1, fmt, ap);
 }
-
-void
-backtrace()
-{
-  uint64 fp = r_fp(); // current stack frame pointer.
-  uint64 return_address = *(uint64 *)(fp - 8); // current return address.
-  printf("backtrace:\n");
-  do
-  {
-    printf("%x\n", return_address);
-    fp = *(uint64 *)(fp - 16);
-  } while (fp != PGROUNDDOWN(fp));
-}
