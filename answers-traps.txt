@@ -1,0 +1,6 @@
+1. Registers a0/a1/a2 contain arguments to functions. a2 register hold 13 for call to printf.
+2. The function f is inline and being optimized in main function, the g function is inlined in f.
+3. At offset 0x628 after x[ra], ra is set to PC at last instruction.
+4. The value of register ra is 0x38, which is 4 bytes after the jalr instruction.
+5. The output is "he110 world". If the RISC-V were instead big-endian, i should be set 0x726c6400. 57616 does not need to be change to a different value because the value but not the address is passed to function.
+6. The value of register a2 is treated as an integer and will be printed. Inside the function printf, while the iteration of format string meets the second "%d", the function printf will expect the second parameter passed from the caller, which should be in register a2.
