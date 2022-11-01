@@ -108,6 +108,6 @@ struct proc {
 
   // fields for sigalarm
   int alarminterval;           // alarm interval
-  void (*handler)();           // callback function
+  uint64 handleraddress;       // callback function virtual address
   int tickspassed;             // ticks have passed since the last call to a process's alarm handler
 };

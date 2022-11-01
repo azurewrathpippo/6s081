@@ -102,7 +102,7 @@ sys_sigalarm(void)
 {
   struct proc *p = myproc();
   argint(0, &p->alarminterval);
-  argaddr(1, (uint64 *)(p->handler));
+  argaddr(1, &p->handleraddress);
   p->tickspassed = 0;
 
   return 0;

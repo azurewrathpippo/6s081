@@ -143,7 +143,7 @@ found:
 
   // init fields for sigalarm
   p->alarminterval = 0;
-  p->handler = 0;
+  p->handleraddress = 0;
   p->tickspassed = 0;
 
   return p;
