@@ -110,4 +110,6 @@ struct proc {
   int alarminterval;           // alarm interval
   uint64 handleraddress;       // callback function virtual address
   int tickspassed;             // ticks have passed since the last call to a process's alarm handler
+  int ishandlerrunning;        // handler should not be called while it is already called
+  int originalepc;             // original epc before epc is covered by timer interruption
 };

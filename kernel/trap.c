@@ -78,9 +78,11 @@ usertrap(void)
 
   // give up the CPU if this is a timer interrupt.
   if(which_dev == 2) {
-    if (p->alarminterval != 0) { // this proc has a timer outstanding
+    if (p->alarminterval != 0 && !p->ishandlerrunning) { // this proc has a timer outstanding
       p->tickspassed++;
       if (p->tickspassed == p->alarminterval) {
+        p->ishandlerrunning = 1;
+        p->originalepc = p->trapframe->epc;
         p->tickspassed = 0;
         p->trapframe->epc = p->handleraddress;
       }

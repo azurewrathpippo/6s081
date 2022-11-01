@@ -145,6 +145,7 @@ found:
   p->alarminterval = 0;
   p->handleraddress = 0;
   p->tickspassed = 0;
+  p->ishandlerrunning = 0;
 
   return p;
 }
