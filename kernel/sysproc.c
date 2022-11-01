@@ -108,11 +108,50 @@ sys_sigalarm(void)
   return 0;
 }
 
+void
+restorealarmcontext(struct proc *p)
+{
+  p->trapframe->epc = p->alarmcontext.epc;
+  p->trapframe->ra = p->alarmcontext.ra;
+  p->trapframe->sp = p->alarmcontext.sp;
+  p->trapframe->gp = p->alarmcontext.gp;
+  p->trapframe->tp = p->alarmcontext.tp;
+  p->trapframe->t0 = p->alarmcontext.t0;
+  p->trapframe->t1 = p->alarmcontext.t1;
+  p->trapframe->t2 = p->alarmcontext.t2;
+  p->trapframe->s0 = p->alarmcontext.s0;
+  p->trapframe->s1 = p->alarmcontext.s1;
+  p->trapframe->a0 = p->alarmcontext.a0;
+  p->trapframe->a1 = p->alarmcontext.a1;
+  p->trapframe->a2 = p->alarmcontext.a2;
+  p->trapframe->a3 = p->alarmcontext.a3;
+  p->trapframe->a4 = p->alarmcontext.a4;
+  p->trapframe->a5 = p->alarmcontext.a5;
+  p->trapframe->a6 = p->alarmcontext.a6;
+  p->trapframe->a7 = p->alarmcontext.a7;
+  p->trapframe->s2 = p->alarmcontext.s2;
+  p->trapframe->s3 = p->alarmcontext.s3;
+  p->trapframe->s4 = p->alarmcontext.s4;
+  p->trapframe->s5 = p->alarmcontext.s5;
+  p->trapframe->s6 = p->alarmcontext.s6;
+  p->trapframe->s7 = p->alarmcontext.s7;
+  p->trapframe->s8 = p->alarmcontext.s8;
+  p->trapframe->s9 = p->alarmcontext.s9;
+  p->trapframe->s10 = p->alarmcontext.s10;
+  p->trapframe->s11 = p->alarmcontext.s11;
+  p->trapframe->t3 = p->alarmcontext.t3;
+  p->trapframe->t4 = p->alarmcontext.t4;
+  p->trapframe->t5 = p->alarmcontext.t5;
+  p->trapframe->t6 = p->alarmcontext.t6;
+}
+
 uint64
 sys_sigreturn(void)
 {
   struct proc *p = myproc();
-  p->trapframe->epc = p->originalepc;
+
+  restorealarmcontext(p);
   p->ishandlerrunning = 0;
+
   return 0;
 }
