@@ -9,10 +9,14 @@
 #include "riscv.h"
 #include "defs.h"
 
+#define PAGE_COUNT ((PHYSTOP-KERNBASE)/PGSIZE)
+
 void freerange(void *pa_start, void *pa_end);
 
 extern char end[]; // first address after kernel.
                    // defined by kernel.ld.
+
+uint32 page_refcount[PAGE_COUNT];
 
 struct run {
   struct run *next;
