@@ -320,7 +320,9 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
     if(mappages(new, i, PGSIZE, (uint64)pa, flags) != 0){
       goto err;
     }
+    acquire(&page_refcount_lock);
     page_refcount[PAGE_INDEX(pa)]++;
+    release(&page_refcount_lock);
   }
   return 0;
 
@@ -466,16 +468,15 @@ handlepagefault(pagetable_t pagetable, uint64 va)
   }
 
   uint64 pa = walkaddr(pagetable, va);
+  acquire(&page_refcount_lock);
   uint32 *refcount = &page_refcount[PAGE_INDEX(pa)];
-  if (*refcount == 0) {
-    panic("what the fuck???\n");
-  }
   if (*refcount == 1) {
     *pte |= PTE_W;
     *pte &= ~(PTE_COW);
   } else {
     uint64 ka = (uint64)kalloc();
     if (ka == 0) {
+      release(&page_refcount_lock);
       return -1;
     } else {
       (*refcount)--;
@@ -485,9 +486,11 @@ handlepagefault(pagetable_t pagetable, uint64 va)
       flags |= PTE_W;
       if (mappages(pagetable, va, PGSIZE, ka, flags) != 0) {
         kfree((void *)ka);
+        release(&page_refcount_lock);
         return -1;
       }
     }
   }
+  release(&page_refcount_lock);
   return 0;
 }

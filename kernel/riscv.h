@@ -368,4 +368,5 @@ typedef uint64 *pagetable_t; // 512 PTEs
 
 // for page refcount
 #define PAGE_INDEX(pa) (((uint64)(pa)-KERNBASE)/PGSIZE)
+extern struct spinlock page_refcount_lock;
 extern uint32 page_refcount[];
