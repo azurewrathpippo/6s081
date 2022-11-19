@@ -10,7 +10,6 @@
 #include "defs.h"
 
 #define PAGE_COUNT ((PHYSTOP-KERNBASE)/PGSIZE)
-#define PAGE_INDEX(pa) (((uint64)(pa)-KERNBASE)/PGSIZE)
 
 void freerange(void *pa_start, void *pa_end);
 

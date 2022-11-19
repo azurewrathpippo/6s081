@@ -364,3 +364,7 @@ sfence_vma()
 
 typedef uint64 pte_t;
 typedef uint64 *pagetable_t; // 512 PTEs
+
+// for page refcount
+#define PAGE_INDEX(pa) (((uint64)(pa)-KERNBASE)/PGSIZE)
+extern uint32 page_refcount[];
