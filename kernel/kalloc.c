@@ -10,6 +10,7 @@
 #include "defs.h"
 
 #define PAGE_COUNT ((PHYSTOP-KERNBASE)/PGSIZE)
+#define PAGE_INDEX(pa) (((uint64)(pa)-KERNBASE)/PGSIZE)
 
 void freerange(void *pa_start, void *pa_end);
 
@@ -55,6 +56,17 @@ kfree(void *pa)
   if(((uint64)pa % PGSIZE) != 0 || (char*)pa < end || (uint64)pa >= PHYSTOP)
     panic("kfree");
 
+  acquire(&kmem.lock);
+  uint32 *ref_count_ptr = &page_refcount[PAGE_INDEX(pa)];
+  if (*ref_count_ptr >= 1) {
+    (*ref_count_ptr)--;
+  }
+  if (*ref_count_ptr > 0) {
+    release(&kmem.lock);
+    return;
+  }
+  release(&kmem.lock);
+
   // Fill with junk to catch dangling refs.
   memset(pa, 1, PGSIZE);
 
@@ -82,5 +94,10 @@ kalloc(void)
 
   if(r)
     memset((char*)r, 5, PGSIZE); // fill with junk
+
+  if (r) {
+    page_refcount[PAGE_INDEX(r)] = 1;
+  }
+
   return (void*)r;
 }
