@@ -5,6 +5,8 @@
 #include "riscv.h"
 #include "defs.h"
 #include "fs.h"
+#include "spinlock.h"
+#include "proc.h"
 
 /*
  * the kernel's page table.
@@ -148,7 +150,7 @@ mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
   for(;;){
     if((pte = walk(pagetable, a, 1)) == 0)
       return -1;
-    if(*pte & PTE_V)
+    if(((*pte & PTE_COW) == 0) && (*pte & PTE_V))
       panic("mappages: remap");
     *pte = PA2PTE(pa) | perm | PTE_V;
     if(a == last)
@@ -309,7 +311,7 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
       panic("uvmcopy: pte should exist");
     if((*pte & PTE_V) == 0)
       panic("uvmcopy: page not present");
-    if ((*pte & PTE_W) != 0) {
+    if (*pte & PTE_W) {
       *pte &= ~PTE_W;
       *pte |= PTE_COW;
     }
@@ -318,6 +320,7 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
     if(mappages(new, i, PGSIZE, (uint64)pa, flags) != 0){
       goto err;
     }
+    page_refcount[PAGE_INDEX(pa)]++;
   }
   return 0;
 
@@ -346,9 +349,24 @@ int
 copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
 {
   uint64 n, va0, pa0;
+  pte_t *pte;
 
   while(len > 0){
     va0 = PGROUNDDOWN(dstva);
+
+    if (va0 >= MAXVA) {
+      return -1;
+    }
+    pte = walk(pagetable, va0, 0);
+    if (pte == 0) {
+      return -1;
+    }
+    if ((*pte & PTE_W) == 0) {
+      if (handlepagefault(pagetable, va0) == -1) {
+        return -1;
+      }
+    }
+    
     pa0 = walkaddr(pagetable, va0);
     if(pa0 == 0)
       return -1;
@@ -430,4 +448,46 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
   } else {
     return -1;
   }
+}
+
+int
+handlepagefault(pagetable_t pagetable, uint64 va)
+{
+  if(va >= MAXVA)
+    return -1;
+  
+  va = PGROUNDDOWN(va);
+  pte_t *pte = walk(pagetable, va, 0);
+  if (pte == 0) {
+    return -1;
+  }
+  if ((*pte & PTE_COW) == 0) { // page fault is not caused by COW
+    return -1;
+  }
+
+  uint64 pa = walkaddr(pagetable, va);
+  uint32 *refcount = &page_refcount[PAGE_INDEX(pa)];
+  if (*refcount == 0) {
+    panic("what the fuck???\n");
+  }
+  if (*refcount == 1) {
+    *pte |= PTE_W;
+    *pte &= ~(PTE_COW);
+  } else {
+    uint64 ka = (uint64)kalloc();
+    if (ka == 0) {
+      return -1;
+    } else {
+      (*refcount)--;
+      memmove((void *)ka, (void *)pa, PGSIZE);
+      int flags = PTE_FLAGS(*pte);
+      flags &= ~(PTE_COW);
+      flags |= PTE_W;
+      if (mappages(pagetable, va, PGSIZE, ka, flags) != 0) {
+        kfree((void *)ka);
+        return -1;
+      }
+    }
+  }
+  return 0;
 }

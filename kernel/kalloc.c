@@ -94,9 +94,8 @@ kalloc(void)
   if(r)
     memset((char*)r, 5, PGSIZE); // fill with junk
 
-  if (r) {
+  if (r)
     page_refcount[PAGE_INDEX(r)] = 1;
-  }
 
   return (void*)r;
 }
