@@ -41,6 +41,7 @@ barrier()
   if (r == bstate.round) {
     bstate.round++;
     bstate.nthread = 0;
+    // bstate.barrier_cond indicate that round r is over.
     pthread_cond_broadcast(&bstate.barrier_cond);
   }
 
