@@ -1,0 +1,5 @@
+Without lock, the problem might occur while two threats execute function insert simultaneously.
+For example, the first threads run instructions till "e->next = n;", and then thread switches.
+The second thread now finish insert function insert completely, and now table[i] points to the entry created from second thread.
+Then the thread switching happens again, and table[i]'s pointing changes from second thread's entry to first thread's entry, so that the entry created by second thread is missing on the list.
+And what is worth noticed is that there will not only be one situation that errors may occur.
