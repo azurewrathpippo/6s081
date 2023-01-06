@@ -137,6 +137,22 @@ e1000_recv(void)
   // Check for packets that have arrived from the e1000
   // Create and deliver an mbuf for each packet (using net_rx()).
   //
+  int descriptor_index = (regs[E1000_RDT] + 1) % RX_RING_SIZE;
+  struct rx_desc *descriptor = &rx_ring[descriptor_index];
+
+  if (!(descriptor->status & E1000_RXD_STAT_DD)) { // packet not ready
+    return;
+  }
+
+  struct mbuf *m = rx_mbufs[descriptor_index];
+  m->len = descriptor->length;
+  net_rx(m);
+
+  rx_mbufs[descriptor_index] = mbufalloc(0);
+  rx_ring[descriptor_index].addr = (uint64)rx_mbufs[descriptor_index]->head;
+  rx_ring[descriptor_index].status = 0;
+
+  regs[E1000_RDT] = descriptor_index;
 }
 
 void
