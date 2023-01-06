@@ -19,7 +19,8 @@ static struct mbuf *rx_mbufs[RX_RING_SIZE];
 // remember where the e1000's registers live.
 static volatile uint32 *regs;
 
-struct spinlock e1000_lock;
+struct spinlock e1000_transmit_lock;
+struct spinlock e1000_recv_lock;
 
 // called by pci_init().
 // xregs is the memory address at which the
@@ -29,7 +30,8 @@ e1000_init(uint32 *xregs)
 {
   int i;
 
-  initlock(&e1000_lock, "e1000");
+  initlock(&e1000_transmit_lock, "e1000_transmit");
+  initlock(&e1000_recv_lock, "e1000_recv");
 
   regs = xregs;
 
@@ -102,10 +104,13 @@ e1000_transmit(struct mbuf *m)
   // the TX descriptor ring so that the e1000 sends it. Stash
   // a pointer so that it can be freed after sending.
   //
+  acquire(&e1000_transmit_lock);
+
   int descriptor_index = regs[E1000_TDT];
   struct tx_desc *descriptor = &tx_ring[descriptor_index];
 
   if (!(descriptor->status & E1000_TXD_STAT_DD)) { // descriptor is still be used.
+    release(&e1000_transmit_lock);
     return -1;
   }
 
@@ -124,6 +129,7 @@ e1000_transmit(struct mbuf *m)
 
   // update E1000_TDT
   regs[E1000_TDT] = (descriptor_index + 1) % TX_RING_SIZE;
+  release(&e1000_transmit_lock);
 
   return 0;
 }
@@ -137,22 +143,28 @@ e1000_recv(void)
   // Check for packets that have arrived from the e1000
   // Create and deliver an mbuf for each packet (using net_rx()).
   //
-  int descriptor_index = (regs[E1000_RDT] + 1) % RX_RING_SIZE;
-  struct rx_desc *descriptor = &rx_ring[descriptor_index];
+  acquire(&e1000_recv_lock);
 
-  if (!(descriptor->status & E1000_RXD_STAT_DD)) { // packet not ready
-    return;
+  while (1) {
+    int descriptor_index = (regs[E1000_RDT] + 1) % RX_RING_SIZE;
+    struct rx_desc *descriptor = &rx_ring[descriptor_index];
+
+    if (!(descriptor->status & E1000_RXD_STAT_DD)) { // packet not ready
+      break;
+    }
+
+    struct mbuf *m = rx_mbufs[descriptor_index];
+    m->len = descriptor->length;
+    net_rx(m);
+
+    rx_mbufs[descriptor_index] = mbufalloc(0);
+    rx_ring[descriptor_index].addr = (uint64)rx_mbufs[descriptor_index]->head;
+    rx_ring[descriptor_index].status = 0;
+
+    regs[E1000_RDT] = descriptor_index;
   }
 
-  struct mbuf *m = rx_mbufs[descriptor_index];
-  m->len = descriptor->length;
-  net_rx(m);
-
-  rx_mbufs[descriptor_index] = mbufalloc(0);
-  rx_ring[descriptor_index].addr = (uint64)rx_mbufs[descriptor_index]->head;
-  rx_ring[descriptor_index].status = 0;
-
-  regs[E1000_RDT] = descriptor_index;
+  release(&e1000_recv_lock);
 }
 
 void
