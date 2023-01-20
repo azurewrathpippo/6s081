@@ -41,6 +41,23 @@ hash_func(uint dev, uint blockno) {
   return h % NBUCKET;
 }
 
+static void
+insert_after(struct buf *pos, struct buf *b) {
+  b->next = pos->next;
+  pos->next = b;
+}
+
+static struct buf*
+get_after(struct buf *pos) {
+  if (!pos->next) {
+    return pos->next;
+  }
+  struct buf *b = pos->next;
+  pos->next = b->next;
+  b->next = 0;
+  return b;
+}
+
 void
 binit(void)
 {
@@ -99,22 +116,40 @@ bget(uint dev, uint blockno)
     struct buf *b = &bcache.bucket[searching_bucket_index];
     while (b->next) {
       if (b->next->refcnt == 0) {
-        unused = b->next;
-        b->next = b->next->next;
-        release(&bcache.bucket_lock[searching_bucket_index]);
+        unused = get_after(b);
         break;
       }
       b = b->next;
     }
+    release(&bcache.bucket_lock[searching_bucket_index]);
     if (unused) {
       break;
     }
-    release(&bcache.bucket_lock[searching_bucket_index]);
   }
 
   if (unused) {
-    struct buf *b = unused;
     acquire(&bcache.bucket_lock[bucket_index]);
+
+    struct buf *b = bcache.bucket[bucket_index].next;
+    while (b) {
+      if (b->dev == dev && b->blockno == blockno) {
+        b->refcnt++;
+
+        // unused can not be used now, reinsert it.
+        unused->dev = 0;
+        unused->blockno = 0xFFFFFF;
+        unused->refcnt = 0;
+        unused->valid = 0;
+        insert_after(&bcache.bucket[bucket_index], unused);
+
+        release(&bcache.bucket_lock[bucket_index]);
+        acquiresleep(&b->lock);
+        return b;
+      }
+      b = b->next;
+    }
+
+    b = unused;
 
     b->dev = dev;
     b->blockno = blockno;
@@ -122,8 +157,7 @@ bget(uint dev, uint blockno)
     b->refcnt = 1;
 
     // put buf into hash table.
-    b->next = bcache.bucket[bucket_index].next;
-    bcache.bucket[bucket_index].next = b;
+    insert_after(&bcache.bucket[bucket_index], b);
     release(&bcache.bucket_lock[bucket_index]);
 
     acquiresleep(&b->lock);
