@@ -92,8 +92,8 @@ bget(uint dev, uint blockno)
   release(&bcache.bucket_lock[bucket_index]);
   struct buf *unused = 0;
 
-  for (int i = 0; i < NBUF; i++) {
-    int searching_bucket_index = (bucket_index + i) % NBUF;
+  for (int i = 0; i < NBUCKET; i++) {
+    int searching_bucket_index = (bucket_index + i) % NBUCKET;
     acquire(&bcache.bucket_lock[searching_bucket_index]);
 
     struct buf *b = &bcache.bucket[searching_bucket_index];
