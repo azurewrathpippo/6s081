@@ -26,12 +26,11 @@
 #define NBUCKET 13
 
 struct {
-  struct spinlock lock;
+  // struct spinlock lock;
   struct buf buf[NBUF];
 
   struct spinlock bucket_lock[NBUCKET];
-  struct buf uncached_buf;
-  struct buf *bucket[NBUCKET];// hold all cached buffer
+  struct buf bucket[NBUCKET];// hold all cached buffer
 } bcache;
 
 static int
@@ -47,19 +46,21 @@ binit(void)
 {
   struct buf *b;
 
-  initlock(&bcache.lock, "bcache");
+  // initlock(&bcache.lock, "bcache");
 
   for (int i = 0; i < NBUCKET; i++) {
-    char buffer[32];
-    snprintf(buffer, 32, "bcache[%d]", i);
-    initlock(&bcache.bucket_lock[i], buffer);
+    static char buffer[NBUCKET][64];
+    snprintf(buffer[i], 64, "bcache.bucket[%d]", i);
+    initlock(&bcache.bucket_lock[i], buffer[i]);
   }
 
   for(b = bcache.buf; b < bcache.buf+NBUF; b++){
     initsleeplock(&b->lock, "buffer");
-    
-    b->next = bcache.uncached_buf.next;
-    bcache.uncached_buf.next = b;
+
+    // place buf into a bucket.
+    int bucket_index = hash_func(0, b - bcache.buf);
+    b->next = bcache.bucket[bucket_index].next;
+    bcache.bucket[bucket_index].next = b;
   }
 }
 
@@ -74,7 +75,7 @@ bget(uint dev, uint blockno)
 
   // Is the block already cached?
   {
-    struct buf *b = bcache.bucket[bucket_index];
+    struct buf *b = bcache.bucket[bucket_index].next;
     while (b) {
       if (b->dev == dev && b->blockno == blockno) {
         b->refcnt++;
@@ -88,25 +89,44 @@ bget(uint dev, uint blockno)
 
   // Not cached.
   // find one empty buffer.
-  acquire(&bcache.lock);
-  if (bcache.uncached_buf.next) {
-    struct buf *b = bcache.uncached_buf.next;
+  release(&bcache.bucket_lock[bucket_index]);
+  struct buf *unused = 0;
+
+  for (int i = 0; i < NBUF; i++) {
+    int searching_bucket_index = (bucket_index + i) % NBUF;
+    acquire(&bcache.bucket_lock[searching_bucket_index]);
+
+    struct buf *b = &bcache.bucket[searching_bucket_index];
+    while (b->next) {
+      if (b->next->refcnt == 0) {
+        unused = b->next;
+        b->next = b->next->next;
+        release(&bcache.bucket_lock[searching_bucket_index]);
+        break;
+      }
+      b = b->next;
+    }
+    if (unused) {
+      break;
+    }
+    release(&bcache.bucket_lock[searching_bucket_index]);
+  }
+
+  if (unused) {
+    struct buf *b = unused;
+    acquire(&bcache.bucket_lock[bucket_index]);
+
     b->dev = dev;
     b->blockno = blockno;
     b->valid = 0;
-    bcache.uncached_buf.next = b->next;
-    release(&bcache.lock);
+    b->refcnt = 1;
 
     // put buf into hash table.
-    b->next = bcache.bucket[bucket_index];
-    bcache.bucket[bucket_index] = b;
-    b->refcnt = 1;
+    b->next = bcache.bucket[bucket_index].next;
+    bcache.bucket[bucket_index].next = b;
     release(&bcache.bucket_lock[bucket_index]);
 
     acquiresleep(&b->lock);
-    acquire(&tickslock);
-    b->ts = ticks;
-    release(&tickslock);
     return b;
   }
   panic("bget: no buffers");
@@ -148,23 +168,6 @@ brelse(struct buf *b)
   int bucket_index = hash_func(b->dev, b->blockno);
   acquire(&bcache.bucket_lock[bucket_index]);
   b->refcnt--;
-  if (b->refcnt == 0) {
-    acquire(&bcache.lock);
-    // remove b from hash table
-    if (bcache.bucket[bucket_index] == b) {
-      bcache.bucket[bucket_index] = b->next;
-    } else {
-      struct buf *prev = bcache.bucket[bucket_index];
-      while (prev->next != b) {
-        prev = prev->next;
-      }
-      prev->next = b->next;
-    }
-    // put b back into unused buffer
-    b->next = bcache.uncached_buf.next;
-    bcache.uncached_buf.next = b;
-    release(&bcache.lock);
-  }
   release(&bcache.bucket_lock[bucket_index]);
 }
 
