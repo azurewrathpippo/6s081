@@ -430,12 +430,28 @@ bmap(struct inode *ip, uint bn)
   panic("bmap: out of range");
 }
 
+// blockno is the number of block which contain data block numbers.
+static void free_indirect_addr(struct inode *ip, uint blockno) {
+  struct buf *bp;
+  uint *a;
+  int i;
+
+  bp = bread(ip->dev, blockno);
+  a = (uint*)bp->data;
+  for(i = 0; i < BADDRCNT; i++){
+    if(a[i])
+      bfree(ip->dev, a[i]);
+  }
+  brelse(bp);
+  bfree(ip->dev, blockno);
+}
+
 // Truncate inode (discard contents).
 // Caller must hold ip->lock.
 void
 itrunc(struct inode *ip)
 {
-  int i, j;
+  int i;
   struct buf *bp;
   uint *a;
 
@@ -447,15 +463,22 @@ itrunc(struct inode *ip)
   }
 
   if(ip->addrs[NDIRECT]){
-    bp = bread(ip->dev, ip->addrs[NDIRECT]);
+    free_indirect_addr(ip, ip->addrs[NDIRECT]);
+    ip->addrs[NDIRECT] = 0;
+  }
+
+  if (ip->addrs[NDIRECT + 1]){
+    bp = bread(ip->dev, ip->addrs[NDIRECT + 1]);
     a = (uint*)bp->data;
-    for(j = 0; j < NINDIRECT; j++){
-      if(a[j])
-        bfree(ip->dev, a[j]);
+    for (i = 0; i < NINDIRECT; i++) {
+      if (a[i]) {
+        free_indirect_addr(ip, a[i]);
+      }
     }
     brelse(bp);
-    bfree(ip->dev, ip->addrs[NDIRECT]);
-    ip->addrs[NDIRECT] = 0;
+
+    free_indirect_addr(ip, ip->addrs[NDIRECT + 1]);
+    ip->addrs[NDIRECT + 1] = 0;
   }
 
   ip->size = 0;
