@@ -252,6 +252,8 @@ create(char *path, short type, short major, short minor)
   if((ip = dirlookup(dp, name, 0)) != 0){
     iunlockput(dp);
     ilock(ip);
+    if (type == T_SYMLINK && ip->type == T_SYMLINK)
+      return ip;
     if(type == T_FILE && (ip->type == T_FILE || ip->type == T_DEVICE))
       return ip;
     iunlockput(ip);
@@ -486,7 +488,23 @@ sys_pipe(void)
 }
 
 uint64
-sys_link(void)
+sys_symlink(void)
 {
+  char target[MAXPATH], path[MAXPATH];
+  struct inode *ip;
+
+  if(argstr(0, target, MAXPATH) < 0 || argstr(1, path, MAXPATH) < 0)
+    return -1;
+  
+  begin_op();
+  if((ip = create(path, T_SYMLINK, 0, 0)) == 0){
+    end_op();
+    return -1;
+  }
+  if(writei(ip, 0, (uint64)target, 0, MAXPATH) != MAXPATH)
+    panic("symlink: writei");
+
+  end_op();
+
   return 0;
 }
