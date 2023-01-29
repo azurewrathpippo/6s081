@@ -293,6 +293,7 @@ sys_open(void)
   struct file *f;
   struct inode *ip;
   int n;
+  int symlink_depth;
 
   if((n = argstr(0, path, MAXPATH)) < 0 || argint(1, &omode) < 0)
     return -1;
@@ -311,6 +312,33 @@ sys_open(void)
       return -1;
     }
     ilock(ip);
+
+    symlink_depth = 0;
+    while (ip->type == T_SYMLINK) {
+      if (omode & O_NOFOLLOW) {
+        break;
+      }
+      // too deep.
+      symlink_depth++;
+      if (symlink_depth > MAXSYMLINKDEPTH) {
+        iunlockput(ip);
+        end_op();
+        return -1;
+      }
+
+      // get path from symlink.
+      if(readi(ip, 0, (uint64)path, 0, MAXPATH) != MAXPATH) {
+        panic("sys_open: symlink readi");
+      }
+      iunlockput(ip);
+
+      if ((ip == namei(path)) == 0) {
+        end_op();
+        return -1;
+      }
+      ilock(ip);
+    }
+    
     if(ip->type == T_DIR && omode != O_RDONLY){
       iunlockput(ip);
       end_op();
