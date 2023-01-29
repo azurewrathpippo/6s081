@@ -532,6 +532,7 @@ sys_symlink(void)
   if(writei(ip, 0, (uint64)target, 0, MAXPATH) != MAXPATH)
     panic("symlink: writei");
 
+  iunlockput(ip);
   end_op();
 
   return 0;
