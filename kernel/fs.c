@@ -477,7 +477,7 @@ itrunc(struct inode *ip)
     }
     brelse(bp);
 
-    free_indirect_addr(ip, ip->addrs[NDIRECT + 1]);
+    bfree(ip->dev, ip->addrs[NDIRECT + 1]);
     ip->addrs[NDIRECT + 1] = 0;
   }
 
