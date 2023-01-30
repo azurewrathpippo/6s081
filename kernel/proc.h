@@ -82,9 +82,9 @@ struct trapframe {
 
 struct vma {
   uint addr;// 0 represent invalid.
-  uint len;
-  uint permissions;
-  uint flag;
+  int len;
+  int prot;
+  int flag;
   int fd;
   int ref_cnt;
 };
