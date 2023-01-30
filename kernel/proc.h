@@ -80,15 +80,6 @@ struct trapframe {
   /* 280 */ uint64 t6;
 };
 
-struct vma {
-  uint addr;// 0 represent invalid.
-  int len;
-  int prot;
-  int flag;
-  int fd;
-  int ref_cnt;
-};
-
 enum procstate { UNUSED, USED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
 // Per-process state
