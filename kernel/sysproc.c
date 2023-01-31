@@ -5,7 +5,12 @@
 #include "param.h"
 #include "memlayout.h"
 #include "spinlock.h"
+#include "sleeplock.h"
 #include "proc.h"
+#include "vma.h"
+#include "fs.h"
+#include "file.h"
+#include "fcntl.h"
 
 uint64
 sys_exit(void)
@@ -99,7 +104,50 @@ sys_uptime(void)
 uint64
 sys_mmap(void)
 {
-  return -1;
+  int i;
+  int len;
+  int prot, flag;
+  int fd;
+  if(argint(1, &len) < 0)
+    return -1;
+  if(argint(2, &prot) < 0)
+    return -1;
+  if(argint(3, &flag) < 0)
+    return -1;
+  if(argint(4, &fd) < 0)
+    return -1;
+
+  struct proc *p = myproc();
+  struct file *f = p->ofile[fd];
+  if (!f || f->type != FD_INODE) {
+    return -1;
+  }
+
+  // check permission
+  if ((prot & PROT_READ) && !f->readable) {
+    return -1;
+  }
+  if ((prot & PROT_WRITE) && !f->writable) {
+    return -1;
+  }
+
+  struct vma *region = vmaalloc();
+  if (region == 0)
+    panic("no vma region");
+
+  for (i = 0; i < NOVMA; i++) {
+    if (!p->mappedregion[i]) 
+      p->mappedregion[i] = region;
+  }
+
+  region->addr = getpageforvma(PGROUNDUP(len) / PGSIZE);
+  region->len = len;
+  region->prot = prot;
+  region->flag = flag;
+  region->f = filedup(f);
+  region->ref_cnt = 1;
+
+  return (uint64)region;
 }
 
 uint64
