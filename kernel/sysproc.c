@@ -124,11 +124,15 @@ sys_mmap(void)
   }
 
   // check permission
-  if ((prot & PROT_READ) && !f->readable) {
-    return -1;
+  if (prot & PROT_READ) {
+    if (!f->readable) {
+      return -1;
+    }
   }
-  if ((prot & PROT_WRITE) && !f->writable) {
-    return -1;
+  if (prot & PROT_WRITE) {
+    if (flag == MAP_SHARED && !f->writable) {
+      return -1;
+    }
   }
 
   struct vma *region = vmaalloc();
