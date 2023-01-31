@@ -72,7 +72,9 @@ int do_munmap(uint64 addr, int len) {
       // write back the page.
       if (region->flag == MAP_SHARED && (*pte & PTE_D)) {
         int n = min(PGSIZE, region->addr + region->len - a);
+        ilock(region->f->ip);
         writei(region->f->ip, 0, PTE2PA(*pte), a - region->addr, n);
+        iunlock(region->f->ip);
       }
       // do unmap.
       uvmunmap(p->pagetable, a, 1, 1);
