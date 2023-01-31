@@ -293,6 +293,13 @@ fork(void)
     return -1;
   }
 
+  // Copy vma table.
+  for (i = 0; i < NOVMA; i++) {
+    if (p->mappedregion[i]) {
+      np->mappedregion[i] = vmadup(p->mappedregion[i]);
+    }
+  }
+
   // Copy user memory from parent to child.
   if(uvmcopy(p->pagetable, np->pagetable, p->sz) < 0){
     freeproc(np);
