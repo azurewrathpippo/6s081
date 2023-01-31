@@ -267,6 +267,16 @@ growproc(int n)
   return 0;
 }
 
+// get a range of free va, do not 
+int getpageforvma(int pagecount) {
+  uint va;
+  struct proc *p = myproc();
+
+  va = PGROUNDUP(p->sz);
+  p->sz = va + pagecount * PGSIZE;
+  return va;
+}
+
 // Create a new process, copying the parent.
 // Sets up child kernel stack to return as if from fork() system call.
 int
