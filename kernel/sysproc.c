@@ -190,7 +190,10 @@ sys_munmap(void)
     }
   } else if (end_addr == PGROUNDUP(region->addr + region->len)) {
     region->len = addr - region->addr;
+  } else {
+    return -1;
   }
+  uvmunmap(p->pagetable, addr, len/PGSIZE, 1);
 
   return 0;
 }
