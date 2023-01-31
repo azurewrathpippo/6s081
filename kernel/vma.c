@@ -92,9 +92,15 @@ int do_munmap(uint64 addr, int len) {
       uvmunmap(p->pagetable, a, 1, 1);
     }
   }
+  if (addr == region->addr) {
+    region->addr = addr + len;
+    region->len -= len;
+  } else if (addr + len == PGROUNDUP(region->addr + region->len)) {
+    region->len = addr - region->addr;
+  }
   end_op();
 
-  if (addr == region->addr && len == PGROUNDUP(region->len)) {
+  if (region->len == 0) {
     p->mappedregion[i] = 0;
     region->ref_cnt--;
   }
