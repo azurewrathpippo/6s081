@@ -86,6 +86,7 @@ void            printfinit(void);
 struct vma*     vmaalloc(void);
 struct vma*     vmadup(struct vma*);
 void            vmainit(void);
+int             do_munmap(uint64, int);
 
 // proc.c
 int             cpuid(void);
