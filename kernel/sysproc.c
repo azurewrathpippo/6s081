@@ -153,5 +153,53 @@ sys_mmap(void)
 uint64
 sys_munmap(void)
 {
-  return -1;
+  uint64 addr;
+  uint64 end_addr;
+  struct proc *p;
+  struct vma *region = 0;
+  struct vma *tmp = 0;
+  int i;// index of the region
+  int len;
+  if(argaddr(0, &addr) < 0)
+    return -1;
+  if(argint(1, &len) < 0)
+    return -1;
+  // addr must be the multiple of PGSIZE
+  if (addr % PGSIZE != 0) {
+    return -1;
+  }
+  // must unmap the whole page
+  len = PGROUNDUP(len);
+  // end addr
+  end_addr = addr + len;
+  p = myproc();
+  for (i = 0; i < NOVMA; i++) {
+    tmp = p->mappedregion[i];
+    if (tmp) {
+      if (tmp->addr <= addr && addr < tmp->addr + tmp->len) {
+        region = tmp;
+        break;
+      }
+    }
+  }
+
+  if (!region) {
+    return -1;
+  }
+
+  if (addr == region->addr) {
+    if (len == PGROUNDUP(region->len)) { // whole vma is unmapped
+      vmaclose(region);
+      p->mappedregion[i] = 0;
+    } else if (len > PGROUNDUP(region->len)) {
+      return -1;
+    } else {
+      region->addr += len;
+      region->len -= addr;
+    }
+  } else if (end_addr == PGROUNDUP(region->addr + region->len)) {
+    region->len = addr - region->addr;
+  }
+
+  return 0;
 }
