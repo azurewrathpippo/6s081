@@ -1,10 +1,12 @@
+struct file;
+
 struct vma {
   struct spinlock lock;
 
-  uint addr;// 0 represent invalid.
+  uint64 addr;// 0 represent invalid.
   int len;
   int prot;
   int flag;
-  int fd;
+  struct file *f;
   int ref_cnt;
 };
