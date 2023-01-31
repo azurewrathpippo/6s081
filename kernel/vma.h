@@ -1,8 +1,6 @@
 struct file;
 
 struct vma {
-  struct spinlock lock;
-
   uint64 addr;// 0 represent invalid.
   int len;
   int prot;

@@ -268,7 +268,8 @@ growproc(int n)
 }
 
 // get a range of free va, do not 
-int getpageforvma(int pagecount) {
+int
+getpageforvma(int pagecount) {
   uint va;
   struct proc *p = myproc();
 

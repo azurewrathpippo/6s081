@@ -6,21 +6,24 @@
 #include "vma.h"
 #include "defs.h"
 
-struct vma regions[NVMA];
+struct {
+  struct spinlock lock;
+  struct vma regions[NVMA];
+} rtable;
 
 struct vma*
 vmaalloc(void) {
   struct vma *region;
 
-  for(region = regions; region < regions + NVMA; region++){
-    acquire(&region->lock);
+  acquire(&rtable.lock);
+  for(region = rtable.regions; region < rtable.regions + NVMA; region++){
     if(region->ref_cnt == 0){
       region->ref_cnt = 1;
-      release(&region->lock);
+      release(&rtable.lock);
       return region;
     }
-    release(&region->lock);
   }
+  release(&rtable.lock);
   return 0;
 }
 
@@ -35,12 +38,12 @@ vmaclose(struct vma* region) {
     return;
   }
 
-  acquire(&region->lock);
+  acquire(&rtable.lock);
   region->ref_cnt--;
   if (region->ref_cnt == 0) {
     vmadestroy(region);
   }
-  release(&region->lock);
+  release(&rtable.lock);
 }
 
 struct vma* vmadup(struct vma* region) {
@@ -48,19 +51,15 @@ struct vma* vmadup(struct vma* region) {
     return region;
   }
 
-  acquire(&region->lock);
+  acquire(&rtable.lock);
   if(region->ref_cnt < 1)
     panic("vmadup");
   region->ref_cnt++;
-  release(&region->lock);
+  release(&rtable.lock);
 
   return region;
 }
 
 void vmainit(void) {
-  struct vma *region;
-  
-  for(region = regions; region < regions + NVMA; region++){
-      initlock(&region->lock, "vma");
-  }
+  initlock(&rtable.lock, "vma");
 }
