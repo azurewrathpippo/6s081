@@ -147,7 +147,7 @@ sys_mmap(void)
   region->f = filedup(f);
   region->ref_cnt = 1;
 
-  return (uint64)region;
+  return (uint64)region->addr;
 }
 
 uint64
