@@ -478,7 +478,9 @@ handlepagefault(pagetable_t pagetable, uint64 va, int is_read)
     kfree((void *)ka);
     return -1;
   }
+  ilock(region->f->ip);
   int readsz = readi(region->f->ip, 0, ka, va - region->addr, PGSIZE);
+  iunlock(region->f->ip);
   memset((void *)(ka + readsz), 0, PGSIZE - readsz);
   return 0;
 }
