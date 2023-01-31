@@ -142,8 +142,10 @@ sys_mmap(void)
     panic("no vma region");
 
   for (i = 0; i < NOVMA; i++) {
-    if (!p->mappedregion[i]) 
+    if (!p->mappedregion[i]) {
       p->mappedregion[i] = region;
+      break;
+    }
   }
 
   region->addr = getpageforvma(PGROUNDUP(len) / PGSIZE);
