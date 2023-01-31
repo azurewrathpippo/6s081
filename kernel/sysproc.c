@@ -12,6 +12,8 @@
 #include "file.h"
 #include "fcntl.h"
 
+#define min(a, b) ((a) < (b) ? (a) : (b))
+
 uint64
 sys_exit(void)
 {
@@ -158,7 +160,7 @@ uint64
 sys_munmap(void)
 {
   uint64 addr;
-  uint64 end_addr;
+  uint64 a;
   struct proc *p;
   struct vma *region = 0;
   int i;// index of the region
@@ -173,8 +175,6 @@ sys_munmap(void)
   }
   // must unmap the whole page
   len = PGROUNDUP(len);
-  // end addr
-  end_addr = addr + len;
   p = myproc();
   i = getregion(addr);
   if (i == -1) {
@@ -182,22 +182,34 @@ sys_munmap(void)
   }
   region = p->mappedregion[i];
 
-  if (addr == region->addr) {
-    if (len == PGROUNDUP(region->len)) { // whole vma is unmapped
-      vmaclose(region);
-      p->mappedregion[i] = 0;
-    } else if (len > PGROUNDUP(region->len)) {
-      return -1;
-    } else {
-      region->addr += len;
-      region->len -= addr;
-    }
-  } else if (end_addr == PGROUNDUP(region->addr + region->len)) {
-    region->len = addr - region->addr;
-  } else {
+  if (addr + len > PGROUNDUP(region->addr + region->len)) {
     return -1;
   }
-  uvmunmap(p->pagetable, addr, len/PGSIZE, 1);
+  // a hole in mapped region.
+  if (addr > region->addr && addr + len < PGROUNDUP(region->addr + region->len)) {
+    return -1;
+  }
+
+  begin_op();
+  // write back the page and do unmap.
+  for(a = addr; a < addr + len; a += PGSIZE){
+    pte_t *pte = walk(p->pagetable, a, 0);
+    if (pte && (*pte & PTE_V)) {
+      // write back the page.
+      if (region->flag == MAP_SHARED && (*pte & PTE_D)) {
+        int n = min(PGSIZE, region->addr + region->len - a);
+        writei(region->f->ip, 0, PTE2PA(*pte), a - region->addr, n);
+      }
+      // do unmap.
+      uvmunmap(p->pagetable, a, 1, 1);
+    }
+  }
+  end_op();
+
+  if (addr == region->addr && len == PGROUNDUP(region->len)) {
+    p->mappedregion[i] = 0;
+    region->ref_cnt--;
+  }
 
   return 0;
 }

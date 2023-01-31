@@ -84,7 +84,6 @@ void            printfinit(void);
 
 // vma.c
 struct vma*     vmaalloc(void);
-void            vmaclose(struct vma*);
 struct vma*     vmadup(struct vma*);
 void            vmainit(void);
 

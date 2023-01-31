@@ -11,8 +11,6 @@
 #include "fs.h"
 #include "file.h"
 
-#define min(a, b) ((a) < (b) ? (a) : (b))
-
 struct {
   struct spinlock lock;
   struct vma regions[NVMA];
@@ -32,35 +30,6 @@ vmaalloc(void) {
   }
   release(&rtable.lock);
   return 0;
-}
-
-static void
-vmadestroy(struct vma* region) {
-  uint64 a;
-  struct proc *p = myproc();
-  if (region->flag == MAP_SHARED) {
-    for(a = region->addr; a < region->addr + region->len; a += PGSIZE){
-      pte_t *pte = walk(p->pagetable, a, 0);
-      if (pte && (*pte & PTE_D)) {
-        int n = min(PGSIZE, region->addr + region->len - a);
-        writei(region->f->ip, 0, PTE2PA(*pte), a - region->addr, n);
-      }
-    }
-  }
-}
-
-void
-vmaclose(struct vma* region) {
-  if (region == 0) {
-    return;
-  }
-
-  acquire(&rtable.lock);
-  region->ref_cnt--;
-  if (region->ref_cnt == 0) {
-    vmadestroy(region);
-  }
-  release(&rtable.lock);
 }
 
 struct vma* vmadup(struct vma* region) {
