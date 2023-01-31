@@ -5,6 +5,12 @@
 #include "riscv.h"
 #include "defs.h"
 #include "fs.h"
+#include "spinlock.h"
+#include "sleeplock.h"
+#include "proc.h"
+#include "vma.h"
+#include "fcntl.h"
+#include "file.h"
 
 /*
  * the kernel's page table.
@@ -431,4 +437,48 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
   } else {
     return -1;
   }
+}
+
+int
+handlepagefault(pagetable_t pagetable, uint64 va, int is_read)
+{
+  int i = getregion(va);
+  struct proc *p;
+  struct vma *region;
+  int flags = PTE_U;
+  if (i == -1) {
+    return -1;
+  }
+  p = myproc();
+  region = p->mappedregion[i];
+  // check permission
+  if (is_read) {
+    if (!(region->prot & PROT_READ)) {
+      return -1;
+    }
+  } else {
+    if (!(region->prot & PROT_WRITE)) {
+      return -1;
+    }
+  }
+  // alloc a page
+  uint64 ka = (uint64)kalloc();
+  if (ka == 0)
+    return -1;
+  // set flags
+  if (region->prot & PROT_READ) {
+    flags |= PTE_R;
+  }
+  if (region->prot & PROT_WRITE) {
+    flags |= PTE_W;
+  }
+  // va page
+  va = PGROUNDDOWN(va);
+  if (mappages(pagetable, va, PGSIZE, ka, flags) != 0) {
+    kfree((void *)ka);
+    return -1;
+  }
+  int readsz = readi(region->f->ip, 0, ka, va - region->addr, PGSIZE);
+  memset((void *)(ka + readsz), 0, PGSIZE - readsz);
+  return 0;
 }
