@@ -24,28 +24,14 @@ vmaalloc(void) {
 
   acquire(&rtable.lock);
   for(region = rtable.regions; region < rtable.regions + NVMA; region++){
-    if(region->ref_cnt == 0){
-      region->ref_cnt = 1;
+    if(!region->valid){
+      region->valid = 1;
       release(&rtable.lock);
       return region;
     }
   }
   release(&rtable.lock);
   return 0;
-}
-
-struct vma* vmadup(struct vma* region) {
-  if (region == 0) {
-    return region;
-  }
-
-  acquire(&rtable.lock);
-  if(region->ref_cnt < 1)
-    panic("vmadup");
-  region->ref_cnt++;
-  release(&rtable.lock);
-
-  return region;
 }
 
 void vmainit(void) {
@@ -102,7 +88,9 @@ int do_munmap(uint64 addr, int len) {
 
   if (region->len == 0) {
     p->mappedregion[i] = 0;
-    region->ref_cnt--;
+    acquire(&rtable.lock);
+    region->valid = 0;
+    release(&rtable.lock);
   }
 
   return 0;

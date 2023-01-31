@@ -151,7 +151,7 @@ sys_mmap(void)
   region->prot = prot;
   region->flag = flag;
   region->f = filedup(f);
-  region->ref_cnt = 1;
+  region->valid = 1;
 
   return (uint64)region->addr;
 }

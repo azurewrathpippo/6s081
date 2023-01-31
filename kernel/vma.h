@@ -6,5 +6,5 @@ struct vma {
   int prot;
   int flag;
   struct file *f;
-  int ref_cnt;
+  int valid;
 };

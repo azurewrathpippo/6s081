@@ -84,7 +84,6 @@ void            printfinit(void);
 
 // vma.c
 struct vma*     vmaalloc(void);
-struct vma*     vmadup(struct vma*);
 void            vmainit(void);
 int             do_munmap(uint64, int);
 
