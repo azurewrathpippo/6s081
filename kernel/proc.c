@@ -5,6 +5,7 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
+#include "vma.h"
 
 struct cpu cpus[NCPU];
 
@@ -664,4 +665,21 @@ procdump(void)
     printf("%d %s %s", p->pid, state, p->name);
     printf("\n");
   }
+}
+
+int
+getregion(uint64 addr) {
+  struct proc *p = myproc();
+  struct vma *region = 0;
+  int i;
+
+  for (i = 0; i < NOVMA; i++) {
+    region = p->mappedregion[i];
+    if (region) {
+      if (region->addr <= addr && addr < region->addr + region->len) {
+        return i;
+      }
+    }
+  }
+  return -1;
 }

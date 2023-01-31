@@ -157,7 +157,6 @@ sys_munmap(void)
   uint64 end_addr;
   struct proc *p;
   struct vma *region = 0;
-  struct vma *tmp = 0;
   int i;// index of the region
   int len;
   if(argaddr(0, &addr) < 0)
@@ -173,19 +172,11 @@ sys_munmap(void)
   // end addr
   end_addr = addr + len;
   p = myproc();
-  for (i = 0; i < NOVMA; i++) {
-    tmp = p->mappedregion[i];
-    if (tmp) {
-      if (tmp->addr <= addr && addr < tmp->addr + tmp->len) {
-        region = tmp;
-        break;
-      }
-    }
-  }
-
-  if (!region) {
+  i = getregion(addr);
+  if (i == -1) {
     return -1;
   }
+  region = p->mappedregion[i];
 
   if (addr == region->addr) {
     if (len == PGROUNDUP(region->len)) { // whole vma is unmapped
