@@ -296,7 +296,12 @@ fork(void)
   // Copy vma table.
   for (i = 0; i < NOVMA; i++) {
     if (p->mappedregion[i]) {
-      np->mappedregion[i] = vmadup(p->mappedregion[i]);
+      np->mappedregion[i] = vmaalloc();
+      np->mappedregion[i]->addr = p->mappedregion[i]->addr;
+      np->mappedregion[i]->len = p->mappedregion[i]->len;
+      np->mappedregion[i]->prot = p->mappedregion[i]->prot;
+      np->mappedregion[i]->flag = p->mappedregion[i]->flag;
+      np->mappedregion[i]->f = filedup(p->mappedregion[i]->f);
     }
   }
 

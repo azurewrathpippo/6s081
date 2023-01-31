@@ -88,6 +88,7 @@ int do_munmap(uint64 addr, int len) {
 
   if (region->len == 0) {
     p->mappedregion[i] = 0;
+    fileclose(region->f);
     acquire(&rtable.lock);
     region->valid = 0;
     release(&rtable.lock);
